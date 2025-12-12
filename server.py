@@ -5,10 +5,9 @@ from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from reader3 import Book, BookMetadata, ChapterContent, TOCEntry
+from reader3 import Book
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
