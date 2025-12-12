@@ -13,7 +13,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["black>=24.0.0"]
+dev = [
+    "black>=24.0.0",
+    "ruff>=0.7.0",
+]
 
 [tool.black]
 line-length = 79
@@ -38,3 +41,9 @@ exclude = '''
                      # the root of the project
 )
 '''
+
+[tool.ruff]
+# Decrease the maximum line length to 79 characters.
+line-length = 79
+src = ["src"]
+target-version = "py311"
