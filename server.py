@@ -65,51 +65,18 @@ async def library_view(request: Request):
 
 
 @app.get("/read/{book_id}", response_class=HTMLResponse)
-async def redirect_to_first_chapter(book_id: str):
+async def redirect_to_first_chapter(request: Request, book_id: str):
     """Helper to just go to chapter 0."""
-    return await read_chapter(book_id=book_id, chapter_index=0)
-
-
-@app.get("/read/{book_id}/{chapter_index}", response_class=HTMLResponse)
-async def read_chapter(request: Request, book_id: str, chapter_index: int):
-    """The main reader interface."""
-    book = load_book_cached(book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-
-    if chapter_index < 0 or chapter_index >= len(book.spine):
-        raise HTTPException(status_code=404, detail="Chapter not found")
-
-    current_chapter = book.spine[chapter_index]
-
-    # Calculate Prev/Next links
-    prev_idx = chapter_index - 1 if chapter_index > 0 else None
-    next_idx = (
-        chapter_index + 1 if chapter_index < len(book.spine) - 1 else None
-    )
-
-    return templates.TemplateResponse(
-        "reader.html",
-        {
-            "request": request,
-            "book": book,
-            "current_chapter": current_chapter,
-            "chapter_index": chapter_index,
-            "book_id": book_id,
-            "prev_idx": prev_idx,
-            "next_idx": next_idx,
-        },
-    )
+    return await read_chapter_or_file(request=request, book_id=book_id, path_segment="0")
 
 
 @app.get("/read/{book_id}/images/{image_name}")
 async def serve_image(book_id: str, image_name: str):
     """
-    Serves images specifically for a book.
+    Serves images from the images/ subfolder.
     The HTML contains <img src="images/pic.jpg">.
     The browser resolves this to /read/{book_id}/images/pic.jpg.
     """
-    # Security check: ensure book_id is clean
     safe_book_id = os.path.basename(book_id)
     safe_image_name = os.path.basename(image_name)
 
@@ -119,6 +86,58 @@ async def serve_image(book_id: str, image_name: str):
         raise HTTPException(status_code=404, detail="Image not found")
 
     return FileResponse(img_path)
+
+
+@app.get("/read/{book_id}/{path_segment:path}", response_class=HTMLResponse)
+async def read_chapter_or_file(request: Request, book_id: str, path_segment: str):
+    """
+    Handles both chapter navigation (numeric) and static file serving (non-numeric).
+    """
+    # Check if it's a chapter index (numeric)
+    if path_segment.isdigit():
+        chapter_index = int(path_segment)
+        book = load_book_cached(book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        if chapter_index < 0 or chapter_index >= len(book.spine):
+            raise HTTPException(status_code=404, detail="Chapter not found")
+
+        current_chapter = book.spine[chapter_index]
+
+        prev_idx = chapter_index - 1 if chapter_index > 0 else None
+        next_idx = (
+            chapter_index + 1 if chapter_index < len(book.spine) - 1 else None
+        )
+
+        return templates.TemplateResponse(
+            "reader.html",
+            {
+                "request": request,
+                "book": book,
+                "current_chapter": current_chapter,
+                "chapter_index": chapter_index,
+                "book_id": book_id,
+                "prev_idx": prev_idx,
+                "next_idx": next_idx,
+            },
+        )
+
+    # Otherwise, treat as a static file request
+    safe_book_id = os.path.basename(book_id)
+    safe_file_path = os.path.basename(path_segment)
+
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp"}
+    ext = os.path.splitext(safe_file_path)[1].lower()
+    if ext not in allowed_extensions:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    full_path = os.path.join(BOOKS_DIR, safe_book_id, safe_file_path)
+
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(full_path)
 
 
 if __name__ == "__main__":

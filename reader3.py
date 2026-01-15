@@ -277,6 +277,27 @@ def process_epub(epub_path: str, output_dir: str) -> Book:
                 elif filename in image_map:
                     img["src"] = image_map[filename]
 
+            # A2. Fix SVG <image> elements with xlink:href
+            for img in soup.find_all("image"):
+                href = img.get("xlink:href", "") or img.get("href", "")
+                if not href:
+                    continue
+
+                href_decoded = unquote(href)
+                filename = os.path.basename(href_decoded)
+
+                new_path = None
+                if href_decoded in image_map:
+                    new_path = image_map[href_decoded]
+                elif filename in image_map:
+                    new_path = image_map[filename]
+
+                if new_path:
+                    if img.get("xlink:href"):
+                        img["xlink:href"] = new_path
+                    else:
+                        img["href"] = new_path
+
             # B. Clean HTML
             soup = clean_html_content(soup)
 
