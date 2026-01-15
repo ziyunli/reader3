@@ -7,7 +7,10 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
-from reader3 import Book, BookMetadata, ChapterContent, TOCEntry  # noqa: F401 (required for pickle)
+from reader3 import Book, BookMetadata, ChapterContent, TOCEntry
+
+# Required for pickle deserialization - do not remove
+_PICKLE_CLASSES = (Book, BookMetadata, ChapterContent, TOCEntry)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
